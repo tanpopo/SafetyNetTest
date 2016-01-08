@@ -68,4 +68,11 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    //    protected synchronized void buildGoogleApiClient() {
+//        GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(this)
+//                .addApi(SafetyNet.API)
+//                .addConnectionCallbacks(this)
+//                .build();
+//    }
 }

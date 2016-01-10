@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     static private String byteToString(byte[] bytes, String separator) {
-        String str = new String();
+        String str = "";
         for (int i=0; i<bytes.length; i++) {
             if (i != 0) {
                 str += separator;

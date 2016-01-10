@@ -28,12 +28,14 @@ import com.google.android.gms.common.api.Status;
 import com.google.android.gms.safetynet.SafetyNetApi;
 import com.google.android.gms.common.api.ResultCallback;
 
+import junit.framework.Assert;
+
 public class MainActivity extends AppCompatActivity
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     private static String tag = "MainActivity";
 
     private GoogleApiClient mGoogleApiClient = null;
-    private SecureRandom secureRandom = null;
+    private SecureRandom mSecureRandom = null;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -50,11 +52,6 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        try {
-            secureRandom = SecureRandom.getInstance("SHA1PRNG");
-        } catch (NoSuchAlgorithmException e) {
-            Log.e(tag, "securerandom initialize failed!");
-        }
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -75,9 +72,19 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        ////////////////////////////////
+        // initialize variables
+
+        try {
+            mSecureRandom = SecureRandom.getInstance("SHA1PRNG");
+        } catch (NoSuchAlgorithmException e) {
+            Log.e(tag, "securerandom initialize failed!");
+        }
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+
+        buildGoogleApiClient();
     }
 
     @Override
@@ -105,16 +112,14 @@ public class MainActivity extends AppCompatActivity
     private int attest() {
 
         byte[] nonce = getRequestNonce(); // Should be at least 16 bytes in length.
-        if (mGoogleApiClient == null) {
-            buildGoogleApiClient();
-        }
+//        Assert.assertNotNull(nonce);
+//        Assert.assertNotNull(mGoogleApiClient);
 
         if (nonce == null || mGoogleApiClient == null) {
-            Log.e(tag, "Error: nonce or client is null");
+            Log.e(tag, "Error: nonce or client is null!!");
             return 1;
         }
-
-        Log.d(tag, "nonce=" + new String(nonce));
+        Log.d(tag, "nonce=" + byteToString(nonce, ":"));
 
         SafetyNet.SafetyNetApi.attest(mGoogleApiClient, nonce)
                 .setResultCallback(new ResultCallback<SafetyNetApi.AttestationResult>() {
@@ -127,11 +132,12 @@ public class MainActivity extends AppCompatActivity
                             // result.getJwsResult() contains the result data
                             Log.d(tag, "attest success!");
 
-//                            final String jwsResult = result.getJwsResult();
-//                            if (!TextUtils.isEmpty(jwsResult)) {
-//                                TextView outputView = (TextView) findViewById(R.id.outputView);
-//                                outputView.setText(jwsResult);
-//                            }
+                            final String jwsResult = result.getJwsResult();
+                            if (!TextUtils.isEmpty(jwsResult)) {
+                                TextView outputView = (TextView) findViewById(R.id.outputView);
+                                outputView.setText(jwsResult);
+                                Log.d(tag, "result\n" + jwsResult);
+                            }
                         } else {
                             // An error occurred while communicating with the service
                             Log.e(tag, "attest failed!");
@@ -141,40 +147,26 @@ public class MainActivity extends AppCompatActivity
         return 0;
     }
 
-    protected synchronized void buildGoogleApiClient() {
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(SafetyNet.API)
-                .addConnectionCallbacks(this)
-                .build();
-    }
 
-    private byte[] getRequestNonce() {
-        byte[] nonce = null;
-
-        if (secureRandom != null) {
-            nonce = new byte[32];
-            secureRandom.nextBytes(nonce);
-        }
-        return nonce;
-    }
     ///////////////////////////////////////
     // override
+    //interface GoogleApiClient.ConnectionCallbacks
 
     @Override
     public void onConnected(Bundle connectionHint) {
-        Log.d(tag, "onConnected!");
+        Log.d(tag, "GoogleApiClient.ConnectionCallbacks onConnected!");
 
         Toast.makeText(this, "connected to SafetyNet", Toast.LENGTH_LONG).show();
     }
 
     @Override
     public void onConnectionSuspended(int cause) {
-        Log.d(tag, "onConnectionSuspended");
+        Log.d(tag, "GoogleApiClient.ConnectionCallbacks onConnectionSuspended");
     }
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult result) {
-        Log.d(tag, "onConnectionFailed");
+        Log.d(tag, "GoogleApiClient.OnConnectionFailedListener onConnectionFailed result=" + Integer.toString(result.getErrorCode()) + ":" + result.getErrorMessage());
     }
 
     @Override
@@ -195,6 +187,9 @@ public class MainActivity extends AppCompatActivity
                 Uri.parse("android-app://com.example.mrk.safetynettestfirst/http/host/path")
         );
         AppIndex.AppIndexApi.start(client, viewAction);
+
+        mGoogleApiClient.connect();
+        Log.d(tag, "GoogleApiClient connect requested");
     }
 
     @Override
@@ -213,7 +208,44 @@ public class MainActivity extends AppCompatActivity
                 // TODO: Make sure this auto-generated app deep link URI is correct.
                 Uri.parse("android-app://com.example.mrk.safetynettestfirst/http/host/path")
         );
+
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.disconnect();
+        }
+
         AppIndex.AppIndexApi.end(client, viewAction);
         client.disconnect();
+
+    }
+
+    ///////////////////////////
+    // utils
+    protected synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(SafetyNet.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+    }
+
+    private byte[] getRequestNonce() {
+        byte[] nonce = null;
+
+        if (mSecureRandom != null) {
+            nonce = new byte[32];
+            mSecureRandom.nextBytes(nonce);
+        }
+        return nonce;
+    }
+
+    static private String byteToString(byte[] bytes, String separator) {
+        String str = new String();
+        for (int i=0; i<bytes.length; i++) {
+            if (i != 0) {
+                str += separator;
+            }
+            str += Byte.toString(bytes[i]);
+        }
+        return str;
     }
 }

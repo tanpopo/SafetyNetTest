@@ -2,6 +2,7 @@ package com.example.mrk.safetynettestfirst;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -42,6 +43,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Log.d(tag, "onCreate");
+
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -104,33 +108,36 @@ public class MainActivity extends AppCompatActivity
         if (mGoogleApiClient == null) {
             buildGoogleApiClient();
         }
+
         if (nonce == null || mGoogleApiClient == null) {
             Log.e(tag, "Error: nonce or client is null");
             return 1;
         }
 
-//        SafetyNet.SafetyNetApi.attest(mGoogleApiClient, nonce)
-//                .setResultCallback(new ResultCallback<SafetyNetApi.AttestationResult>() {
-//
-//                    @Override
-//                    public void onResult(SafetyNetApi.AttestationResult result) {
-//                        Status status = result.getStatus();
-//                        if (status.isSuccess()) {
-//                            // Indicates communication with the service was successful.
-//                            // result.getJwsResult() contains the result data
-//                            Log.d(tag, "attest success!");
-//
+        Log.d(tag, "nonce=" + new String(nonce));
+
+        SafetyNet.SafetyNetApi.attest(mGoogleApiClient, nonce)
+                .setResultCallback(new ResultCallback<SafetyNetApi.AttestationResult>() {
+
+                    @Override
+                    public void onResult(@NonNull SafetyNetApi.AttestationResult result) {
+                        Status status = result.getStatus();
+                        if (status.isSuccess()) {
+                            // Indicates communication with the service was successful.
+                            // result.getJwsResult() contains the result data
+                            Log.d(tag, "attest success!");
+
 //                            final String jwsResult = result.getJwsResult();
 //                            if (!TextUtils.isEmpty(jwsResult)) {
 //                                TextView outputView = (TextView) findViewById(R.id.outputView);
 //                                outputView.setText(jwsResult);
 //                            }
-//                        } else {
-//                            // An error occurred while communicating with the service
-//                            Log.e(tag, "attest failed!");
-//                        }
-//                    }
-//                });
+                        } else {
+                            // An error occurred while communicating with the service
+                            Log.e(tag, "attest failed!");
+                        }
+                    }
+                });
         return 0;
     }
 
@@ -166,7 +173,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onConnectionFailed(ConnectionResult result) {
+    public void onConnectionFailed(@NonNull ConnectionResult result) {
         Log.d(tag, "onConnectionFailed");
     }
 

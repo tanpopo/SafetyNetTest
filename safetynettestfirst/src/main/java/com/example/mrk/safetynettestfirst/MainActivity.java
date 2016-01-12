@@ -3,11 +3,13 @@ package com.example.mrk.safetynettestfirst;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -134,9 +136,13 @@ public class MainActivity extends AppCompatActivity
 
                             final String jwsResult = result.getJwsResult();
                             if (!TextUtils.isEmpty(jwsResult)) {
+                                String decodedString = parseJsonWebSignature(jwsResult);
+                                Log.d(tag, "result(raw)\n" + jwsResult);
+
                                 TextView outputView = (TextView) findViewById(R.id.outputView);
-                                outputView.setText(jwsResult);
-                                Log.d(tag, "result\n" + jwsResult);
+                                outputView.setText(decodedString);
+
+                                Log.d(tag, "result(jwt decoded)\n" + decodedString);
                             }
                         } else {
                             // An error occurred while communicating with the service
@@ -247,5 +253,33 @@ public class MainActivity extends AppCompatActivity
             str += Byte.toString(bytes[i]);
         }
         return str;
+    }
+
+    private @Nullable
+//        SafetyNetResponse parseJsonWebSignature(@NonNull String jwsResult) {
+        String parseJsonWebSignature(@NonNull String jwsResult) {
+            //the JWT (JSON WEB TOKEN) is just a 3 base64 encoded parts concatenated by a . character
+        final String[] jwtParts = jwsResult.split("\\.");
+
+        if(jwtParts.length==3) {
+            //we're only really interested in the body/payload
+            String decodedPayload = new String(Base64.decode(jwtParts[1], Base64.DEFAULT));
+
+            Log.d(tag, "raw(result[0])=" + jwtParts[0]);
+            Log.d(tag, "raw(result[1])=" + jwtParts[1]);
+            Log.d(tag, "raw(result[2])=" + jwtParts[2]);
+
+            Log.d(tag, "decode(result[0])=" + new String(Base64.decode(jwtParts[0], Base64.DEFAULT)));
+            Log.d(tag, "xxx");
+            Log.d(tag, "decode(result[1])=" + new String(Base64.decode(jwtParts[1], Base64.DEFAULT)));
+            Log.d(tag, "xxx");
+            Log.d(tag, "decode(result[2])=" + new String(Base64.decode(jwtParts[2], Base64.DEFAULT)));
+
+//            return SafetyNetResponse.parse(decodedPayload);
+            return decodedPayload;
+        }else{
+            Log.e(tag, "jwsResult is incorrect num of jwtParts=" + jwtParts.length);
+            return null;
+        }
     }
 }

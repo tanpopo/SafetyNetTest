@@ -164,7 +164,7 @@ public class MainActivity extends AppCompatActivity
                             logText += "Error: attest failed: errorcode = " + status.getStatusCode() + ":" + CommonStatusCodes.getStatusCodeString(status.getStatusCode())+ "\n";
                         }
                         endTime = java.lang.System.currentTimeMillis();
-                        logText += "onResult elapsed time = " + Long.toString((endTime - startTime)/1000) + "\n";
+                        logText += "SafetyNetApi.attest() elapsed time(sec) = " + Long.toString((endTime - startTime)/1000) + "\n";
 
                         TextView outputView = (TextView) findViewById(R.id.outputView);
                         outputView.setText(outputView.getText() + logText);

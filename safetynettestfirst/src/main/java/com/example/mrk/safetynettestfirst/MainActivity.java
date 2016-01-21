@@ -53,8 +53,6 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Log.d(tag, "onCreate");
-
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -73,7 +71,6 @@ public class MainActivity extends AppCompatActivity
         attestButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 attest();
             }
         });
@@ -119,7 +116,6 @@ public class MainActivity extends AppCompatActivity
         TextView outputView = (TextView) findViewById(R.id.outputView);
         outputView.setText("");
 
-
         String logText = "attest start\n";
         Log.d(tag, "attest -in");
         startTime = java.lang.System.currentTimeMillis();
@@ -150,7 +146,6 @@ public class MainActivity extends AppCompatActivity
                         String logText = "onResult called\n";
                         Status status = result.getStatus();
                         if (status.isSuccess()) {
-                            Log.d(tag, "attest success!");
                             logText += "attest success!\n";
                             final String jwsResult = result.getJwsResult();
                             if (!TextUtils.isEmpty(jwsResult)) {
@@ -159,7 +154,6 @@ public class MainActivity extends AppCompatActivity
                                 String decodedPayloadString = parseJsonWebSignaturePayload(jwsResult);
                                 if (decodedPayloadString != null) {
                                     logText += "decodedPayloadString=" + decodedPayloadString + "\n";;
-                                    Log.d(tag, "result(JWS decoded)\n" + decodedPayloadString);
                                 } else {
                                     logText += "Error: JWS format is incorrect" + "\n";;
                                 }
@@ -167,7 +161,6 @@ public class MainActivity extends AppCompatActivity
                                 logText += "Error: JWS is empty" + "\n";
                             }
                         } else {
-                            Log.e(tag, "attest failed!");
                             logText += "Error: attest failed: errorcode = " + status.getStatusCode() + ":" + CommonStatusCodes.getStatusCodeString(status.getStatusCode())+ "\n";
                         }
                         endTime = java.lang.System.currentTimeMillis();
@@ -175,6 +168,8 @@ public class MainActivity extends AppCompatActivity
 
                         TextView outputView = (TextView) findViewById(R.id.outputView);
                         outputView.setText(outputView.getText() + logText);
+
+                        Log.d(tag, logText);
 
                     }
 
@@ -231,6 +226,9 @@ public class MainActivity extends AppCompatActivity
                 Uri.parse("android-app://com.example.mrk.safetynettestfirst/http/host/path")
         );
         AppIndex.AppIndexApi.start(client, viewAction);
+
+        TextView outputView = (TextView) findViewById(R.id.outputView);
+        outputView.setText("");
 
         mGoogleApiClient.connect();
         Log.d(tag, "GoogleApiClient connect requested");

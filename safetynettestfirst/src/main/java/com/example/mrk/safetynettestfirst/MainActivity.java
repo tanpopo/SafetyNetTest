@@ -20,11 +20,14 @@ import android.widget.Toast;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.concurrent.TimeUnit;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.safetynet.SafetyNet;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.safetynet.SafetyNetApi;
@@ -38,6 +41,8 @@ public class MainActivity extends AppCompatActivity
 
     private GoogleApiClient mGoogleApiClient = null;
     private SecureRandom mSecureRandom = null;
+
+    private long startTime = 0, endTime = 0;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -68,7 +73,6 @@ public class MainActivity extends AppCompatActivity
         attestButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(tag, "attest button clicked!");
 
                 attest();
             }
@@ -112,44 +116,78 @@ public class MainActivity extends AppCompatActivity
     }
 
     private int attest() {
+        TextView outputView = (TextView) findViewById(R.id.outputView);
+        outputView.setText("");
+
+
+        String logText = "attest start\n";
+        Log.d(tag, "attest -in");
+        startTime = java.lang.System.currentTimeMillis();
 
         byte[] nonce = getRequestNonce(); // Should be at least 16 bytes in length.
 //        Assert.assertNotNull(nonce);
 //        Assert.assertNotNull(mGoogleApiClient);
 
-        if (nonce == null || mGoogleApiClient == null) {
-            Log.e(tag, "Error: nonce or client is null!!");
+        if (nonce == null) {
+            logText += "Error: nonce is null!!" + "\n";
             return 1;
         }
-        Log.d(tag, "nonce=" + byteToString(nonce, ":"));
+        if (mGoogleApiClient == null) {
+            logText += "Error: client is null!!" + "\n";
+            return 1;
+        }
+        logText += "attest ready: nonce=" + Integer.toString(byteToHex(nonce), 16) + "\n";
 
-        SafetyNet.SafetyNetApi.attest(mGoogleApiClient, nonce)
-                .setResultCallback(new ResultCallback<SafetyNetApi.AttestationResult>() {
-
+        PendingResult pendingResult = SafetyNet.SafetyNetApi.attest(mGoogleApiClient, nonce);
+        if (pendingResult.isCanceled()) {
+            logText += "pendingResult is cancelled\n";
+        } else {
+            logText += "pendingResult waiting\n";
+        }
+        pendingResult.setResultCallback(new ResultCallback<SafetyNetApi.AttestationResult>() {
                     @Override
                     public void onResult(@NonNull SafetyNetApi.AttestationResult result) {
+                        String logText = "onResult called\n";
                         Status status = result.getStatus();
                         if (status.isSuccess()) {
-                            // Indicates communication with the service was successful.
-                            // result.getJwsResult() contains the result data
                             Log.d(tag, "attest success!");
-
+                            logText += "attest success!\n";
                             final String jwsResult = result.getJwsResult();
                             if (!TextUtils.isEmpty(jwsResult)) {
-                                String decodedString = parseJsonWebSignature(jwsResult);
                                 Log.d(tag, "result(raw)\n" + jwsResult);
 
-                                TextView outputView = (TextView) findViewById(R.id.outputView);
-                                outputView.setText(decodedString);
-
-                                Log.d(tag, "result(jwt decoded)\n" + decodedString);
+                                String decodedPayloadString = parseJsonWebSignaturePayload(jwsResult);
+                                if (decodedPayloadString != null) {
+                                    logText += "decodedPayloadString=" + decodedPayloadString + "\n";;
+                                    Log.d(tag, "result(JWS decoded)\n" + decodedPayloadString);
+                                } else {
+                                    logText += "Error: JWS format is incorrect" + "\n";;
+                                }
+                            } else {
+                                logText += "Error: JWS is empty" + "\n";
                             }
                         } else {
-                            // An error occurred while communicating with the service
                             Log.e(tag, "attest failed!");
+                            logText += "Error: attest failed: errorcode = " + status.getStatusCode() + ":" + CommonStatusCodes.getStatusCodeString(status.getStatusCode())+ "\n";
                         }
+                        endTime = java.lang.System.currentTimeMillis();
+                        logText += "onResult elapsed time = " + Long.toString((endTime - startTime)/1000) + "\n";
+
+                        TextView outputView = (TextView) findViewById(R.id.outputView);
+                        outputView.setText(outputView.getText() + logText);
+
                     }
-                });
+
+        }, 180, TimeUnit.SECONDS);
+//                });
+        logText += "attest completed\n";
+
+
+        outputView = (TextView) findViewById(R.id.outputView);
+        outputView.setText(outputView.getText() + logText);
+
+        Log.d(tag, "attest -out");
+
         return 0;
     }
 
@@ -255,9 +293,17 @@ public class MainActivity extends AppCompatActivity
         return str;
     }
 
+    static private Integer byteToHex(byte[] bytes) {
+        Integer val = 0;
+        for (int i=0; i<bytes.length; i++) {
+            val = (val << 8) + (bytes[i] & 0xff);
+        }
+        return val;
+    }
+
     private @Nullable
 //        SafetyNetResponse parseJsonWebSignature(@NonNull String jwsResult) {
-        String parseJsonWebSignature(@NonNull String jwsResult) {
+        String parseJsonWebSignaturePayload(@NonNull String jwsResult) {
             //the JWT (JSON WEB TOKEN) is just a 3 base64 encoded parts concatenated by a . character
         final String[] jwtParts = jwsResult.split("\\.");
 
@@ -269,11 +315,9 @@ public class MainActivity extends AppCompatActivity
             Log.d(tag, "raw(result[1])=" + jwtParts[1]);
             Log.d(tag, "raw(result[2])=" + jwtParts[2]);
 
-            Log.d(tag, "decode(result[0])=" + new String(Base64.decode(jwtParts[0], Base64.DEFAULT)));
-            Log.d(tag, "xxx");
-            Log.d(tag, "decode(result[1])=" + new String(Base64.decode(jwtParts[1], Base64.DEFAULT)));
-            Log.d(tag, "xxx");
-            Log.d(tag, "decode(result[2])=" + new String(Base64.decode(jwtParts[2], Base64.DEFAULT)));
+            Log.d(tag, "decode(result[0])=" + new String(Base64.decode(jwtParts[0], Base64.DEFAULT)) + "\n");
+            Log.d(tag, "decode(result[1])=" + new String(Base64.decode(jwtParts[1], Base64.DEFAULT)) + "\n");
+//            Log.d(tag, "decode(result[2])=" + new String(Base64.decode(jwtParts[2], Base64.DEFAULT)) + "\n");
 
 //            return SafetyNetResponse.parse(decodedPayload);
             return decodedPayload;
